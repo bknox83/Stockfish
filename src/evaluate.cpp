@@ -918,7 +918,7 @@ namespace {
             // For every other opposite colored bishops endgames use scale factor
             // based on the number of all pieces of the strong side.
             else
-                sf = 22 + 3 * pos.count<ALL_PIECES>(strongSide);
+                sf = std::min(60, 22 + 3 * pos.count<ALL_PIECES>(strongSide));
         }
         // For rook endgames with strong side not having overwhelming pawn number advantage
         // and its pawns being on one flank and weak side protecting its pieces with a king
