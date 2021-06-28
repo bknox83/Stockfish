@@ -259,7 +259,7 @@ namespace {
 
   // Assorted bonuses and penalties
   constexpr Score UncontestedOutpost  = S(  1, 10);
-  constexpr Score BishopOnKingRing    = S( 24,  0);
+  constexpr Score BishopOnKingRing    = S( 30,  0);
   constexpr Score BishopXRayPawns     = S(  4,  5);
   constexpr Score FlankAttacks        = S(  8,  0);
   constexpr Score Hanging             = S( 69, 36);
