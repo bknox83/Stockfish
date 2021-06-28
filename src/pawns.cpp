@@ -100,6 +100,7 @@ namespace {
 
     Bitboard ourPawns   = pos.pieces(  Us, PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
+    Bitboard safePawns  = e->pawnAttacks[Us] | ~pawn_attacks_bb<Them>(theirPawns);
 
     Bitboard doubleAttackThem = pawn_double_attacks_bb<Them>(theirPawns);
 
@@ -126,7 +127,7 @@ namespace {
         doubled    = ourPawns   & (s - Up);
         neighbours = ourPawns   & adjacent_files_bb(s);
         phalanx    = neighbours & rank_bb(s);
-        support    = neighbours & rank_bb(s - Up);
+        support    = neighbours & rank_bb(s - Up) & safePawns;
 
         if (doubled)
         {
