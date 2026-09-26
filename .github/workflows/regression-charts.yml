@@ -1,7 +1,14 @@
-name: Regression Charts
+name: Regression Test wiki
 on:
   gollum:
+  schedule:
+    - cron: "23 6 * * *"
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Show the page changes without committing them
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -11,8 +18,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  charts:
-    name: Regenerate wiki charts
+  update:
+    name: Update tests, releases and charts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,18 +38,29 @@ jobs:
       - name: Install matplotlib
         run: pip install matplotlib==3.11.2
 
+      - name: Add new tests and releases
+        id: update
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >
+          python .github/scripts/regression_update.py wiki Regression-Test.md
+          ${{ inputs.dry_run && '--dry-run' || '' }}
+
       - name: Generate charts
         run: python .github/scripts/regression_charts.py wiki Regression-Test.md
 
       - name: Commit and push
+        if: ${{ !inputs.dry_run }}
         working-directory: wiki
+        env:
+          MESSAGE: ${{ steps.update.outputs.message || 'Regenerate regression charts' }}
         run: |
           git add -A
           if git diff --cached --quiet; then
-            echo "Charts are up to date."
+            echo "Wiki is up to date."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Regenerate regression charts"
+          git commit -m "$MESSAGE"
           git push

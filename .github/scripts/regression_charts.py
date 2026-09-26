@@ -40,6 +40,7 @@ CELL_RE = re.compile(
     r"(?:.*?Pai?rsRatio:\s*(?P<pairs>[\d.]+))?"
     r".*?\[\\\[raw statistics\\\]\]\[(?P<raw>[^\]]+)\]")
 LINKDEF_RE = re.compile(r"^\[([^\]]+)\]:\s*(\S+)", re.M)
+DP_RE = re.compile(r"^\[SF(\d+)DP\]:\s*\S*?(sf\d+-progress\.svg)", re.M)
 
 COLUMNS = {"`1 Thread`": "1t", "`8 Threads`": "8t"}
 
@@ -229,6 +230,9 @@ def current(cycle, out, name):
         err = [0.0] + [r[key]["elo_err"] for r in rows]
         ax.errorbar(xs, ys, yerr=err, fmt="-o", color=col, markersize=5,
                     linewidth=2, capsize=4, label=label)
+    if not cycle["rows"]:  # just released: show an empty first month
+        ax.set_xlim(cycle["start"], cycle["start"] + dt.timedelta(days=30))
+        ax.set_ylim(-1, 5)
     ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%Y-%m-%d"))
     fig.autofmt_xdate()
     legend(ax, loc="upper left", ncols=2)
@@ -245,7 +249,7 @@ CHARTS = {
 }
 
 
-def render(cycles, out):
+def render(cycles, out, text):
     shown = [c for c in cycles if charted(c, FIRST_CHARTED)]
     for key, threads in (("1t", "1 Thread"), ("8t", "8 Threads")):
         progression(shown, out, key, "elo", f"Elo Progress ({threads})",
@@ -259,16 +263,22 @@ def render(cycles, out):
         draw_vs_elo(shown, out, key, f"Draw Percentage vs Elo ({threads})",
                     f"draw-vs-elo-{key}.svg")
     current(cycles[-1], out, "current.svg")
+    # Released cycles whose [SFnDP] link points at a generated chart keep
+    # their final Current Development chart (set up by regression_update.py).
+    for name, svg in DP_RE.findall(text):
+        current(next(c for c in cycles if c["name"] == name), out, svg)
 
 
 def relink(text, base_url):
-    """Point the [graph-*] link definitions at the generated charts."""
+    """Point the [graph-*] and generated [SFnDP] link definitions at the charts."""
     def sub(m):
         if m[1] in CHARTS:
             pad = " " * max(1, 18 - len(m[1]) - 3)
             return f"[{m[1]}]:{pad}{base_url}/{CHARTS[m[1]]}"
         return m[0]
     text = re.sub(r"\n?^\[graph-total\]:.*$", "", text, flags=re.M)
+    text = re.sub(r"^(\[SF\d+DP\]:\s*)\S*?(sf\d+-progress\.svg)",
+                  rf"\g<1>{base_url}/\g<2>", text, flags=re.M)
     return re.sub(r"^\[(graph-[a-z0-9]+)\]:\s*\S+", sub, text, flags=re.M)
 
 
@@ -283,7 +293,7 @@ def main():
     load_draws(cycles, out / "fishtest-cache.json")
     for c in cycles:
         print(f"SF {c['name']:>5}  start {c['start']}  rows {len(c['rows'])}")
-    render(cycles, out)
+    render(cycles, out, text)
     new = relink(text, base_url)
     if new != text:
         page.write_text(new, encoding="utf-8", newline="\n")
