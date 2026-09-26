@@ -124,7 +124,8 @@ def load_draws(cycles, cache_path):
                     cache[r["run"]] = [res["wins"], res["draws"], res["losses"]]
                 w, d, l = cache[r["run"]]
                 r["draws"] = d / (w + d + l)
-    cache_path.write_text(json.dumps(cache, indent=0, sort_keys=True) + "\n")
+    cache_path.write_text(json.dumps(cache, indent=0, sort_keys=True) + "\n",
+                          newline="\n")
 
 
 def charted(cycle, first):
@@ -159,7 +160,9 @@ def legend(ax, **kw):
 
 def save(fig, out, name):
     fig.tight_layout()
-    fig.savefig(out / name, format="svg", metadata={"Date": None})
+    # Always write LF line endings so runs on Windows match CI.
+    with open(out / name, "w", encoding="utf-8", newline="\n") as f:
+        fig.savefig(f, format="svg", metadata={"Date": None})
     plt.close(fig)
 
 
