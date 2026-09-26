@@ -1,0 +1,48 @@
+name: Regression Charts
+on:
+  gollum:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: regression-charts
+  cancel-in-progress: false
+
+jobs:
+  charts:
+    name: Regenerate wiki charts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install matplotlib
+        run: pip install matplotlib==3.11.2
+
+      - name: Generate charts
+        run: python .github/scripts/regression_charts.py wiki Regression-Test.md
+
+      - name: Commit and push
+        working-directory: wiki
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Charts are up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Regenerate regression charts"
+          git push
