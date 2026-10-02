@@ -2031,11 +2031,13 @@ void update_all_stats(const Position& pos,
         update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -malus * 713 / 1024);
 
     // Decrease stats for all non-best capture moves
+    int captureMalus = malus * 1489 / 1024;
     for (Move move : capturesSearched)
     {
         movedPiece    = pos.moved_piece(move);
         capturedPiece = type_of(pos.piece_on(move.to_sq()));
-        captureHistory[movedPiece][move.to_sq()][capturedPiece] << -malus * 1489 / 1024;
+        captureHistory[movedPiece][move.to_sq()][capturedPiece] << -captureMalus;
+        captureMalus = captureMalus * 921 / 1024;
     }
 }
 
