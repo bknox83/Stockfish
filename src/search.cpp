@@ -46,6 +46,7 @@
 #include "thread.h"
 #include "timeman.h"
 #include "tt.h"
+#include "tune.h"
 #include "types.h"
 #include "uci.h"
 #include "ucioption.h"
@@ -56,6 +57,11 @@ inline int lmr_divisor(int depth) {
     int d = std::min(depth, 16);
     return 3000 + 7 * (d - 8) * (d - 8);
 }
+
+int ssMain = 2252, ssCont0 = 1126, ssCont1 = 1093, ssLmrScale = 439;
+int ssPawn = 0;
+TUNE(ssMain, ssCont0, ssCont1, ssLmrScale);
+TUNE(SetRange(-1024, 2048), ssPawn);
 
 namespace TB = Tablebases;
 
@@ -1332,6 +1338,9 @@ moves_loop:  // When in check, search starts here
 
         u64 nodeCount = rootNode ? u64(nodes) : 0;
 
+        // Pawn history must be read before the move changes the pawn structure
+        int pawnHist = capture ? 0 : int(sharedHistory.pawn_entry(pos)[movedPiece][move.to_sq()]);
+
         // Step 17. Make the move
         do_move(pos, move, st, givesCheck, capture, ss);
 
@@ -1372,12 +1381,12 @@ moves_loop:  // When in check, search starts here
                           + captureHistory[movedPiece][move.to_sq()][type_of(pos.captured_piece())];
         else
             ss->statScore =
-              (2252 * mainHistory[us][move.raw()] + 1126 * (*contHist[0])[movedPiece][move.to_sq()]
-               + 1093 * (*contHist[1])[movedPiece][move.to_sq()])
+              (ssMain * mainHistory[us][move.raw()] + ssCont0 * (*contHist[0])[movedPiece][move.to_sq()]
+               + ssCont1 * (*contHist[1])[movedPiece][move.to_sq()] + ssPawn * pawnHist)
               / 1024;
 
         // Decrease/increase reduction for moves with a good/bad history
-        r -= ss->statScore * 439 / 4096;
+        r -= ss->statScore * ssLmrScale / 4096;
 
         if (!capture && !is_decisive(alpha))
             r += 3 * std::clamp(alpha - eval, -64, 96);
