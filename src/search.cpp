@@ -911,25 +911,7 @@ Value Search::Worker::search(
             // Partial workaround for the graph history interaction problem.
             // For high rule50 counts don't produce transposition table cutoffs.
             if (pos.rule50_count() < 96)
-            {
-                if (depth >= 7 && ttData.move && pos.pseudo_legal(ttData.move)
-                    && pos.legal(ttData.move) && !is_decisive(ttData.value))
-                {
-                    pos.do_move(ttData.move, st);
-                    Key nextPosKey                             = pos.key();
-                    auto [ttHitNext, ttDataNext, ttWriterNext] = tt.probe(nextPosKey);
-                    pos.undo_move(ttData.move);
-
-                    // Check that the ttValue after the tt move would also trigger a cutoff
-                    if (!is_valid(ttDataNext.value))
-                        return ttData.value;
-
-                    if ((ttData.value >= beta) == (-ttDataNext.value >= beta))
-                        return ttData.value;
-                }
-                else
-                    return ttData.value;
-            }
+                return ttData.value;
         }
         // Case B: No cutoff, but depth was sufficient. Compare the aspiration window to the bound.
         else if (ttData.bound != BOUND_EXACT
