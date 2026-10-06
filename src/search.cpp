@@ -1372,12 +1372,12 @@ moves_loop:  // When in check, search starts here
                           + captureHistory[movedPiece][move.to_sq()][type_of(pos.captured_piece())];
         else
             ss->statScore =
-              (2252 * mainHistory[us][move.raw()] + 1126 * (*contHist[0])[movedPiece][move.to_sq()]
-               + 1093 * (*contHist[1])[movedPiece][move.to_sq()])
+              (2086 * mainHistory[us][move.raw()] + 1096 * (*contHist[0])[movedPiece][move.to_sq()]
+               + 1106 * (*contHist[1])[movedPiece][move.to_sq()])
               / 1024;
 
         // Decrease/increase reduction for moves with a good/bad history
-        r -= ss->statScore * 439 / 4096;
+        r -= ss->statScore * 402 / 4096;
 
         if (!capture && !is_decisive(alpha))
             r += 3 * std::clamp(alpha - eval, -64, 96);
