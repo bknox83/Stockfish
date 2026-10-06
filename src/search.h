@@ -304,6 +304,8 @@ class SearchManager {
     Value                bestPreviousScore;
     Value                bestPreviousAverageScore;
     bool                 stopOnPonderhit;
+    bool                 expectedReply;
+    Key                  expectedRootKey;
 
     const UpdateContext& updates;
 };
