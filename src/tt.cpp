@@ -265,8 +265,8 @@ u8 TranspositionTable::generation() const { return generation8; }
 // Looks up the current position in the transposition table. Calling probe(key)
 // returns true if the key is found (which may be a collision) and has non-null
 // data. Otherwise, it returns false and a pointer to an empty or least valuable
-// TTEntry to be replaced later. The value of an entry is its depth minus 8 times
-// its relative age.
+// TTEntry to be replaced later. The value of an entry is its depth, adjusted for
+// its PV flag and bound type, minus 8 times its relative age.
 std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) const {
 
     TTEntry* const tte   = first_entry(key);
@@ -278,11 +278,18 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
             // After `read()` completes that copy is final, but may be self-inconsistent.
             return {tte[i].is_occupied(), tte[i].read(), TTWriter(&tte[i])};
 
-    // Find an entry to be replaced according to the replacement strategy
+    // Find an entry to be replaced according to the replacement strategy.
+    // As in TTEntry::save(), a PV entry is worth two extra plies of depth, while
+    // an upper bound entry, which rarely carries a move, is worth two plies less.
+    auto worth = [&](const TTEntry& e) {
+        return e.depth8 + 2 * bool(e.genBound8 & PV_MASK)
+             - 2 * ((e.genBound8 & BOUND_MASK) == (BOUND_UPPER << BOUND_SHIFT))
+             - 8 * e.relative_age(generation8);
+    };
+
     TTEntry* replace = tte;
     for (int i = 1; i < ClusterSize; ++i)
-        if (replace->depth8 - 8 * replace->relative_age(generation8)
-            > tte[i].depth8 - 8 * tte[i].relative_age(generation8))
+        if (worth(*replace) > worth(tte[i]))
             replace = &tte[i];
 
     return {false, TTData{Move::none(), VALUE_NONE, VALUE_NONE, DEPTH_NONE, BOUND_NONE, false},
