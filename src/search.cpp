@@ -775,6 +775,8 @@ Value Search::Worker::search(
     int   priorReduction;
     Piece movedPiece;
 
+    Square threatFrom = SQ_NONE, threatTo = SQ_NONE;
+
     SearchedList capturesSearched;
     SearchedList quietsSearched;
 
@@ -1041,6 +1043,18 @@ Value Search::Worker::search(
         do_null_move(pos, st, ss);
 
         Value nullValue = -search<NonPV>(pos, ss + 1, -beta, -beta + 1, depth - R, false);
+
+        // Remember the capture that refuted the null move as a threat to be addressed
+        if (nullValue < beta)
+        {
+            auto [ttHitNull, ttDataNull, ttWriterNull] = tt.probe(pos.key());
+            if (ttHitNull && ttDataNull.move && pos.pseudo_legal(ttDataNull.move)
+                && pos.capture(ttDataNull.move))
+            {
+                threatFrom = ttDataNull.move.from_sq();
+                threatTo   = ttDataNull.move.to_sq();
+            }
+        }
 
         undo_null_move(pos);
 
@@ -1381,6 +1395,11 @@ moves_loop:  // When in check, search starts here
 
         if (!capture && !is_decisive(alpha))
             r += 3 * std::clamp(alpha - eval, -64, 96);
+
+        // Decrease reduction for moves that address the null move threat: moving
+        // the threatened piece away or capturing the threatening piece.
+        if (threatTo != SQ_NONE && (move.from_sq() == threatTo || move.to_sq() == threatFrom))
+            r -= 1024;
 
         // Scale up reductions for expected ALL nodes
         if (allNode)
